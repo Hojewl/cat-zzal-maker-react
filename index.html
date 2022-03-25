@@ -45,15 +45,32 @@
         return JSON.parse(localStorage.getItem(key));
       },
     };
-    console.log("야옹");
+    console.log("야옹")
+
+    const fetchCat = async (text) => {
+        const OPEN_API_DOMAIN = "https://cataas.com";
+        const response = await fetch(`${OPEN_API_DOMAIN}/cat/says/${text}?json=true`);
+        const responseJson = await response.json();
+      return `${OPEN_API_DOMAIN}/${responseJson.url}`;
+    };
+
+    const fetchWord = async () => {
+      const OPEN_API_DOMAIN = "https://api.adviceslip.com/advice";
+        const response = await fetch(`${OPEN_API_DOMAIN}`);
+        const responseJson = await response.json();
+      return responseJson.slip.advice;
+    }
 
     const Title = (props) => {
+      console.log('title render')
       return (
         <h1>{props.children}</h1>
       )
     }
 
-    function CatItem(props) {
+    function CatItem(props) 
+    {
+      console.log('CatItem render')
       return (
         <li>
           {/*value는 string으로 넘겨준다*/}
@@ -63,6 +80,7 @@
     }
 
     function Favorites({ favorites }) {
+      console.log('favorites render')
       return (
         <ul className="favorites">
           {favorites.map((cat => <CatItem img={cat} key={cat} />))}
@@ -71,8 +89,8 @@
     }
 
     const MainCard = ({ img, onHeartClick }) => {
-
-      {/*props 객체를 풀어서  {img}로 받기  - ES6 문법*/ }
+      console.log('main Card render')
+      /*props 객체를 풀어서  {img}로 받기  - ES6 문법*/ 
       return (
         <div className="main-card">
           <img src={img} alt="고양이" width="400" />
@@ -85,6 +103,16 @@
       const includesHangul = (text) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/i.test(text);
       const [value, setValue] = React.useState('');
       const [errorMessage, setErrorMessage] = React.useState('');
+      const [randomWords, setRandomWords] = React.useState('');
+
+      //명언 받아오기
+      async function setInitialWords() {
+        const newWord = await fetchWord();
+        setRandomWords(newWord);
+      }
+      React.useEffect(() => {
+      setInitialWords();
+    }, [])
 
       function handleInputChange(e) {
         const userValue = e.target.value;
@@ -97,23 +125,29 @@
         setValue(userValue.toUpperCase());
       }
 
-      function handleFormSubmit(e) {
+      async function handleFormSubmit(e) {
         e.preventDefault();
         //form validation 
         if (value === '') {
-          setErrorMessage("입력값이 없습니다. 입력해주세요");
+          // setErrorMessage("입력값이 없습니다. 입력해주세요");
+          // return;
+          /* 사용자가 입력한 값이 없을 때는 불러온 명언으로 만든다*/
+          updateMainCat(randomWords);
+          const updateRandomWords = await fetchWord();
+          setRandomWords(updateRandomWords);
           return;
         }
-        updateMainCat();
+        updateMainCat(value);
       }
 
+      console.log("form Render")
       //욕은 *별표 처리 또는 아예 단어 빼기 등등의 기능 추가
       return (
         <form onSubmit={handleFormSubmit}>
           <input
             type="text"
             name="name"
-            placeholder="영어 대사를 입력해주세요"
+            placeholder={randomWords}
             onChange={handleInputChange}
             value={value} />
           <button type="submit">생성</button>
@@ -122,7 +156,7 @@
       )
     }
 
-
+   
     const App = () => {
       const CAT1 = "https://cataas.com/cat/60b73094e04e18001194a309/says/react";
       const CAT2 = "https://cataas.com//cat/5e9970351b7a400011744233/says/inflearn";
@@ -130,7 +164,7 @@
 
       //form이 전송될때마다 상태 변경 필요
       //form 컴포넌트에서 있는 것보다 title컴포넌트에서도 같이 쓰기 위해서는 부모컴포넌트(App)에서 선언해줘야 사용가능하다
-
+      
       //구조분해할당
       const [counter, setCounter] = React.useState(
         //값을 locatStorage에 저장해서 변수를 가지고 있도록
@@ -138,23 +172,39 @@
       );
       const [mainCatImg, setMainCatImg] = React.useState(CAT1);
       const [favorites, setFavorites] = React.useState(
-        //빈배열이면 에러 발생(mapping이 안됨)
+        //빈배열이면 에러 발생(mapping이 안됨1
         //null 값을 읽어올 수 없음
         jsonLocalStorage.getItem("favorites") || []
       );
       // const counter = counterState[0];
       // const setCounter = counterState[1];
+      //const [isLoading, setLoading] = React.useState(true);
 
+     async function setInitialCat (){ 
+      const newCat = await fetchCat('First Cat');
+      setMainCatImg(newCat);
+    }
+    //setInitialCat(); -> //끝도 없이 실행된다
+    //한번만 고양이를 불러내기 위해서 사용해야한다. 그렇지않으면 계속해서 api요청이 보내질것
+    React.useEffect(() => {
+      setInitialCat();
+      //setLoading(false);
+    }, [])
 
+    console.log('App Render');
 
-      function updateMainCat() {
-        {/*웹브라우저의 기본 동작은 폼 전송 후 리프레시를 해줌*/ }
-        const nextCount = counter + 1;
+      async function updateMainCat(value) {
+        /*웹브라우저의 기본 동작은 폼 전송 후 리프레시를 해줌*/ 
+        const newCat = await fetchCat(value);
+
         setCounter(nextCount);
-        setMainCatImg(CAT2);
+        const nextCount = counter + 1;
+        console.log(nextCount);
+        setMainCatImg(newCat);
         //render하기전에는 counter변수가 바뀌기 전으로 위에서 setCounter에서 상태를 바꿔줘도 아직 함수가 안끝났기에 바로 update되지 않아서
         //localStorage에서 저장되는 값은 찍히는 값보다 1이 작다
         jsonLocalStorage.setItem("counter", nextCount);
+        
       }
 
       function handleHeartClick() {
@@ -165,12 +215,12 @@
       }
 
       return (
+        
         <div>
           <Title>{counter}번째 고양이 가라사대</Title>
           <Form updateMainCat={updateMainCat} />
           <MainCard img={mainCatImg} onHeartClick={handleHeartClick} />
           <Favorites favorites={favorites} />
-
         </div>
       );
     }
